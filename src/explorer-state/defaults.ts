@@ -4,6 +4,7 @@ import type {
   TerrainSessionState,
   ViewerSessionState,
 } from '../explorer-types';
+import { DEFAULT_ANIMATION_PLAYBACK_SPEED } from '../animation-settings';
 import { STATE_VERSION } from './constants';
 
 export function createId(prefix: string): string {
@@ -25,7 +26,7 @@ export function createDefaultCharacterSessionState(): CharacterSessionState {
     },
     animationIndex: null,
     autoRotate: false,
-    speed: 0.2,
+    speed: DEFAULT_ANIMATION_PLAYBACK_SPEED,
     scale: 1,
     itemLevel: 0,
     itemExcellent: false,
@@ -49,6 +50,7 @@ export function createDefaultTerrainSessionState(): TerrainSessionState {
     cameraPosition: null,
     cameraTarget: null,
     selectedObject: null,
+    animationsEnabled: true,
     wireframe: false,
     showObjects: true,
     brightness: 1.5,
@@ -59,6 +61,7 @@ export function createDefaultTerrainSessionState(): TerrainSessionState {
 export function createDefaultBmdSessionState(): BmdSessionState {
   return {
     rendererBackend: 'auto',
+    animationsEnabled: true,
     autoRotate: true,
     showSkeleton: false,
     wireframe: false,

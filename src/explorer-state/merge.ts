@@ -85,6 +85,7 @@ function mergeTerrainSessionState(raw: unknown): TerrainSessionState {
       ? mergeVector3(input.cameraTarget)
       : null,
     selectedObject: mergeSelectedObject(input.selectedObject),
+    animationsEnabled: coerceBoolean(input.animationsEnabled, defaults.animationsEnabled),
     wireframe: coerceBoolean(input.wireframe, defaults.wireframe),
     showObjects: coerceBoolean(input.showObjects, defaults.showObjects),
     brightness: coerceNumber(input.brightness, defaults.brightness),
@@ -100,6 +101,7 @@ function mergeBmdSessionState(raw: unknown): BmdSessionState {
     rendererBackend: input.rendererBackend === 'webgpu' || input.rendererBackend === 'webgl'
       ? input.rendererBackend
       : defaults.rendererBackend,
+    animationsEnabled: coerceBoolean(input.animationsEnabled, defaults.animationsEnabled),
     autoRotate: coerceBoolean(input.autoRotate, defaults.autoRotate),
     showSkeleton: coerceBoolean(input.showSkeleton, defaults.showSkeleton),
     wireframe: coerceBoolean(input.wireframe, defaults.wireframe),

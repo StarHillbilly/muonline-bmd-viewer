@@ -23,6 +23,7 @@ import { SkinnedVertexNormalsHelper } from './helpers/SkinnedVertexNormalsHelper
 import { Disposer } from './utils/Disposer';
 import { FileValidator, FileValidationError } from './utils/FileValidator';
 import { logger } from './utils/Logger';
+import { DEFAULT_ANIMATION_PLAYBACK_SPEED } from './animation-settings';
 import {
     applyBlendModeToMaterial,
     describeBlendMode,
@@ -58,6 +59,7 @@ class App {
     private gridHelper: THREE.GridHelper | null = null;
     
     private currentAction: THREE.AnimationAction | null = null;
+    private animationsEnabled = true;
 
     // ### CHANGE ### We store the application state
     private bmdFile: File | null = null;
@@ -173,6 +175,7 @@ class App {
         const brightnessSlider = document.getElementById('brightness-slider') as HTMLInputElement | null;
         return {
             rendererBackend: this.rendererBackendPreference,
+            animationsEnabled: this.animationsEnabled,
             autoRotate: this.isAutoRotating,
             showSkeleton: showSkeletonEl.checked,
             wireframe: wireframeEl.checked,
@@ -190,6 +193,7 @@ class App {
         const brightnessSlider = document.getElementById('brightness-slider') as HTMLInputElement | null;
         const brightnessLabel = document.getElementById('brightness-label');
         const autoRotateCheckbox = document.getElementById('auto-rotate-checkbox') as HTMLInputElement | null;
+        const animationsEnabledCheckbox = document.getElementById('animations-enabled-checkbox') as HTMLInputElement | null;
         const backendSelect = this.rendererBackendSelect;
 
         if (backendSelect) {
@@ -202,6 +206,13 @@ class App {
         if (autoRotateCheckbox) {
             autoRotateCheckbox.checked = state.autoRotate;
             this.isAutoRotating = state.autoRotate;
+        }
+        this.animationsEnabled = state.animationsEnabled;
+        if (animationsEnabledCheckbox) {
+            animationsEnabledCheckbox.checked = state.animationsEnabled;
+        }
+        if (this.currentAction) {
+            this.currentAction.paused = !this.animationsEnabled;
         }
         showSkeletonEl.checked = state.showSkeleton;
         wireframeEl.checked = state.wireframe;
@@ -594,6 +605,7 @@ class App {
         
         const speedSlider = document.getElementById('speed-slider') as HTMLInputElement;
         const speedLabel = document.getElementById('speed-label')!;
+        const animationsEnabledCheckbox = document.getElementById('animations-enabled-checkbox') as HTMLInputElement | null;
         this.gifWidthInput  = document.getElementById('gif-width-input')  as HTMLInputElement;
         this.gifHeightInput = document.getElementById('gif-height-input') as HTMLInputElement;
         this.gifDelayInput  = document.getElementById('gif-delay-input')  as HTMLInputElement;
@@ -613,7 +625,20 @@ class App {
             this.setAnimationSpeed(speed);
             this.emitStateChanged();
         });
-        speedLabel.textContent = `Speed: ${parseFloat(speedSlider.value).toFixed(2)}x`;
+        const initialAnimationSpeed = parseFloat(speedSlider.value) || DEFAULT_ANIMATION_PLAYBACK_SPEED;
+        speedSlider.value = `${initialAnimationSpeed}`;
+        speedLabel.textContent = `Speed: ${initialAnimationSpeed.toFixed(2)}x`;
+
+        if (animationsEnabledCheckbox) {
+            animationsEnabledCheckbox.checked = this.animationsEnabled;
+            animationsEnabledCheckbox.addEventListener('change', (e) => {
+                this.animationsEnabled = (e.target as HTMLInputElement).checked;
+                if (this.currentAction) {
+                    this.currentAction.paused = !this.animationsEnabled;
+                }
+                this.emitStateChanged();
+            });
+        }
 
         if (this.rendererBackendSelect) {
             this.rendererBackendSelect.value = this.rendererBackendPreference;
@@ -2253,6 +2278,7 @@ class App {
             const currentSpeed = parseFloat(speedSlider.value);
             this.currentAction.setEffectiveTimeScale(currentSpeed);
             this.currentAction.reset().play();
+            this.currentAction.paused = !this.animationsEnabled;
         };
 
         animBox.appendChild(select);
@@ -2290,7 +2316,7 @@ class App {
         if (this.mixer) {
             if (this.isFrameLocked) {
                 this.applyLockedFrame();
-            } else if (!this.isRecordingGif) {
+            } else if (this.animationsEnabled && !this.isRecordingGif) {
                 this.mixer.update(delta);
             }
         }

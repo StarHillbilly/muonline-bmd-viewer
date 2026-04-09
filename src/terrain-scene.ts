@@ -5,7 +5,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { ExplorerBookmark, ExplorerVector3, SelectedWorldObjectRef, TerrainSessionState } from './explorer-types';
 import { createId } from './explorer-store';
 import { TerrainLoader } from './terrain/TerrainLoader';
-import { loadTerrainObjects, type TerrainObjectLoadResult, type TerrainObjectSelectionRecord } from './terrain/TerrainObjects';
+import {
+    loadTerrainObjects,
+    type TerrainAnimatedObjectInstance,
+    type TerrainObjectLoadResult,
+    type TerrainObjectSelectionRecord,
+} from './terrain/TerrainObjects';
+import { isObjectVisibleInHierarchy } from './terrain/TerrainAnimationUtils';
 import {
     buildHeightMinimapRaster,
     minimapPointToWorld,
@@ -81,6 +87,7 @@ export class TerrainScene {
     private objectsGroup: THREE.Group | null = null;
     private terrainLoader = new TerrainLoader();
     private objectRecords: TerrainObjectSelectionRecord[] = [];
+    private animatedObjectInstances: TerrainAnimatedObjectInstance[] = [];
     private selectedObjectRecord: TerrainObjectSelectionRecord | null = null;
     private isolatedObjectRecord: TerrainObjectSelectionRecord | null = null;
     private selectionMarker: THREE.Mesh | null = null;
@@ -95,6 +102,7 @@ export class TerrainScene {
     private loadedWorldNumber: number | null = null;
     private currentWorldFiles = new Map<string, File>();
     private cameraChangeHandle: number | null = null;
+    private animationsEnabled = true;
 
     /** Persistent store of all files from the Data folder (browser mode). */
     private dataFiles = new Map<string, File>();
@@ -107,6 +115,7 @@ export class TerrainScene {
     private rendererBackendStatusEl: HTMLElement | null = null;
     private wireframeEl: HTMLInputElement | null = null;
     private showObjectsEl: HTMLInputElement | null = null;
+    private animationsEnabledEl: HTMLInputElement | null = null;
     private brightnessSliderEl: HTMLInputElement | null = null;
     private brightnessLabelEl: HTMLElement | null = null;
     private objectDistanceSliderEl: HTMLInputElement | null = null;
@@ -172,6 +181,7 @@ export class TerrainScene {
                 ? this.toExplorerVector3(this.controls.target)
                 : { x: 0, y: 0, z: 0 },
             selectedObject: this.selectedObjectRecord?.selection || null,
+            animationsEnabled: this.animationsEnabled,
             wireframe: this.wireframeEl?.checked ?? false,
             showObjects: this.showObjectsEl?.checked ?? true,
             brightness: parseFloat(this.brightnessSliderEl?.value || `${TERRAIN_BRIGHTNESS_DEFAULT}`) || TERRAIN_BRIGHTNESS_DEFAULT,
@@ -195,6 +205,10 @@ export class TerrainScene {
         }
         if (this.showObjectsEl) {
             this.showObjectsEl.checked = state.showObjects;
+        }
+        this.animationsEnabled = state.animationsEnabled;
+        if (this.animationsEnabledEl) {
+            this.animationsEnabledEl.checked = state.animationsEnabled;
         }
         if (this.brightnessSliderEl && this.brightnessLabelEl) {
             this.brightnessSliderEl.value = `${state.brightness}`;
@@ -385,6 +399,7 @@ export class TerrainScene {
             this.objectsGroup = null;
         }
         this.objectRecords = [];
+        this.animatedObjectInstances = [];
         this.selectedObjectRecord = null;
         this.isolatedObjectRecord = null;
         this.minimapSourceCanvas = null;
@@ -550,6 +565,7 @@ export class TerrainScene {
         this.rendererBackendStatusEl = document.getElementById('terrain-renderer-status');
         this.wireframeEl = document.getElementById('terrain-wireframe') as HTMLInputElement | null;
         this.showObjectsEl = document.getElementById('terrain-show-objects') as HTMLInputElement | null;
+        this.animationsEnabledEl = document.getElementById('terrain-animations-enabled') as HTMLInputElement | null;
         this.brightnessSliderEl = document.getElementById('terrain-brightness-slider') as HTMLInputElement | null;
         this.brightnessLabelEl = document.getElementById('terrain-brightness-label');
         this.objectDistanceSliderEl = document.getElementById('terrain-object-distance-slider') as HTMLInputElement | null;
@@ -649,6 +665,11 @@ export class TerrainScene {
                     this.updateObjectDistanceCulling(true);
                 }
             }
+            this.emitStateChanged();
+        });
+
+        this.animationsEnabledEl?.addEventListener('change', () => {
+            this.animationsEnabled = this.animationsEnabledEl?.checked ?? true;
             this.emitStateChanged();
         });
 
@@ -839,6 +860,7 @@ export class TerrainScene {
         if (this.statusEl) this.statusEl.textContent = `Loading World ${worldNumber}...`;
         this.updateStats(0, 0);
         this.objectRecords = [];
+        this.animatedObjectInstances = [];
         this.currentWorldFiles.clear();
         this.clearSelection();
         this.resetObjectIsolation();
@@ -914,6 +936,7 @@ export class TerrainScene {
                 );
                 this.objectsGroup = objectResult.group;
                 this.objectRecords = objectResult.records;
+                this.animatedObjectInstances = objectResult.animatedInstances;
                 this.scene.add(this.objectsGroup);
 
                 if (this.showObjectsEl && this.objectsGroup) {
@@ -1240,6 +1263,20 @@ export class TerrainScene {
         this.objectCullLastUpdateMs = now;
     }
 
+    private updateAnimatedObjects(deltaSeconds: number) {
+        if (!this.animationsEnabled || !this.objectsGroup?.visible || this.animatedObjectInstances.length === 0) {
+            return;
+        }
+
+        for (const animatedInstance of this.animatedObjectInstances) {
+            if (!isObjectVisibleInHierarchy(animatedInstance.object3D)) {
+                continue;
+            }
+
+            animatedInstance.mixer.update(deltaSeconds);
+        }
+    }
+
     private isChildVisibleForIsolatedRecord(child: THREE.Object3D, record: TerrainObjectSelectionRecord): boolean {
         if (record.instancedMesh) {
             return child === record.instancedMesh;
@@ -1501,6 +1538,7 @@ export class TerrainScene {
         this.updateKeyboardMovement(delta);
         this.controls.update();
         this.updateObjectDistanceCulling();
+        this.updateAnimatedObjects(delta);
         this.updateSelectionMarker();
         this.drawMinimap();
         this.renderer.render(this.scene, this.camera);

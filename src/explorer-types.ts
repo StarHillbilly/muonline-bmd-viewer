@@ -94,6 +94,7 @@ export interface TerrainSessionState {
   cameraPosition: ExplorerVector3 | null;
   cameraTarget: ExplorerVector3 | null;
   selectedObject: SelectedWorldObjectRef | null;
+  animationsEnabled: boolean;
   wireframe: boolean;
   showObjects: boolean;
   brightness: number;
@@ -102,6 +103,7 @@ export interface TerrainSessionState {
 
 export interface BmdSessionState {
   rendererBackend: 'auto' | 'webgpu' | 'webgl';
+  animationsEnabled: boolean;
   autoRotate: boolean;
   showSkeleton: boolean;
   wireframe: boolean;

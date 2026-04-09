@@ -65,6 +65,8 @@ describe('mergeViewerSessionState', () => {
     expect(merged.character.equipment.armor).toBe('');
     expect(merged.bmd.lastModelName).toBe('Tree01.bmd');
     expect(merged.bmd.rendererBackend).toBe('webgpu');
+    expect(merged.terrain.animationsEnabled).toBe(true);
+    expect(merged.bmd.animationsEnabled).toBe(true);
   });
 
   it('drops malformed collections instead of crashing', () => {
@@ -82,6 +84,20 @@ describe('mergeViewerSessionState', () => {
     expect(merged.recentBookmarks).toEqual(defaults.recentBookmarks);
     expect(merged.recentModels).toEqual(defaults.recentModels);
     expect(merged.characterPresets).toEqual(defaults.characterPresets);
+  });
+
+  it('merges animation toggles with sane defaults', () => {
+    const merged = mergeViewerSessionState({
+      terrain: {
+        animationsEnabled: false,
+      },
+      bmd: {
+        animationsEnabled: false,
+      },
+    });
+
+    expect(merged.terrain.animationsEnabled).toBe(false);
+    expect(merged.bmd.animationsEnabled).toBe(false);
   });
 
   it('normalizes bookmark selected object vectors and optional fields', () => {

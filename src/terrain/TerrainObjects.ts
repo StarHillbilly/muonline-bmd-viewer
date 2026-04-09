@@ -3,7 +3,9 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { BMDLoader } from '../bmd-loader';
 import { convertOzjToDataUrl } from '../ozj-loader';
 import type { SelectedWorldObjectRef } from '../explorer-types';
+import { DEFAULT_ANIMATION_PLAYBACK_SPEED } from '../animation-settings';
 import { createWorldObjectId } from './TerrainExplorerUtils';
+import { canUseInstancedStaticObjects } from './TerrainAnimationUtils';
 import type { OBJData, MapObject } from './formats/OBJReader';
 import { TERRAIN_WORLD_SIZE } from './TerrainMesh';
 import {
@@ -32,6 +34,12 @@ export interface TerrainObjectSelectionRecord {
 export interface TerrainObjectLoadResult {
     group: THREE.Group;
     records: TerrainObjectSelectionRecord[];
+    animatedInstances: TerrainAnimatedObjectInstance[];
+}
+
+export interface TerrainAnimatedObjectInstance {
+    object3D: THREE.Object3D;
+    mixer: THREE.AnimationMixer;
 }
 
 // World 1 object type-to-name mapping.
@@ -187,6 +195,7 @@ export async function loadTerrainObjects(
     const textureCache = new Map<string, THREE.Texture>();
     const blendCache = new Map<string, BlendHeuristicResult>();
     const records: TerrainObjectSelectionRecord[] = [];
+    const animatedInstances: TerrainAnimatedObjectInstance[] = [];
 
     // Group objects by type for instancing
     const byType = new Map<number, MapObject[]>();
@@ -222,6 +231,7 @@ export async function loadTerrainObjects(
             const { group: template, requiredTextures } = await bmdLoader.load(buf);
             const baseOrientation = template.quaternion.clone();
             const approximateRadius = getTemplateApproximateRadius(template);
+            const hasAnimations = template.animations.length > 0;
 
             // Try to load textures for this object
             for (const texName of requiredTextures) {
@@ -252,9 +262,12 @@ export async function loadTerrainObjects(
                     const objQuat = mapObjectAngleToQuaternion(inst.angle);
                     clone.quaternion.copy(objQuat.multiply(baseOrientation));
                     clone.scale.setScalar(inst.scale);
-                    clone.updateMatrix();
+                    clone.animations = template.animations;
+                    if (!hasAnimations) {
+                        clone.updateMatrix();
+                        clone.matrixAutoUpdate = false;
+                    }
                     clone.updateMatrixWorld(true);
-                    clone.matrixAutoUpdate = false;
                     group.add(clone);
 
                     const record = createSelectionRecord(
@@ -273,6 +286,18 @@ export async function loadTerrainObjects(
                         }
                     });
                     records.push(record);
+
+                    const defaultClip = clone.animations[0];
+                    if (defaultClip) {
+                        const mixer = new THREE.AnimationMixer(clone);
+                        const action = mixer.clipAction(defaultClip);
+                        action.setEffectiveTimeScale(DEFAULT_ANIMATION_PLAYBACK_SPEED);
+                        action.reset().play();
+                        animatedInstances.push({
+                            object3D: clone,
+                            mixer,
+                        });
+                    }
                 }
             }
         } catch (e) {
@@ -286,7 +311,7 @@ export async function loadTerrainObjects(
     console.log(`BMDs found: ${foundCount}, missing: ${missingCount}`);
     console.groupEnd();
 
-    return { group, records };
+    return { group, records, animatedInstances };
 }
 
 export function resolveTerrainObjectDefinition(
@@ -513,7 +538,11 @@ function addInstancedStaticObjects(
         }
     });
 
-    if (templateMeshes.length === 0 || hasSkinnedMeshes) {
+    if (!canUseInstancedStaticObjects({
+        meshCount: templateMeshes.length,
+        hasSkinnedMeshes,
+        animationCount: template.animations.length,
+    })) {
         return false;
     }
 
