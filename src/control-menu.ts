@@ -18,7 +18,7 @@ export const DEFAULT_CONTROL_MENU_SECTIONS = {
   'diagnostics-panel': false,
   'export-controls': false,
   'character-data-section': false,
-  'character-profile-section': false,
+  'character-profile-section': true,
   'character-equipment-section': false,
   'character-effects-section': false,
   'character-presets-section': false,
