@@ -24,6 +24,7 @@ import { SkinnedVertexNormalsHelper } from './helpers/SkinnedVertexNormalsHelper
 import { Disposer } from './utils/Disposer';
 import { FileValidator, FileValidationError } from './utils/FileValidator';
 import { logger } from './utils/Logger';
+import { bakeSkinnedModelForExport } from './utils/SkinnedMeshBaker';
 import { DEFAULT_ANIMATION_PLAYBACK_SPEED } from './animation-settings';
 import {
     applyBlendModeToMaterial,
@@ -620,6 +621,9 @@ class App {
 
         const exportGlbBtn = document.getElementById('export-glb-btn') as HTMLButtonElement;
         exportGlbBtn.addEventListener('click', () => this.exportToGLB());
+
+        const exportAiGlbBtn = document.getElementById('export-ai-glb-btn') as HTMLButtonElement;
+        exportAiGlbBtn.addEventListener('click', () => this.exportToGLB({ bakeSkinning: true }));
         
         speedSlider.addEventListener('input', (e) => {
             const speed = parseFloat((e.target as HTMLInputElement).value);
@@ -1149,24 +1153,28 @@ class App {
         this.loadAndApplyTexture(file);
     }
 
-    private async exportToGLB() {
+    private async exportToGLB(options: { bakeSkinning?: boolean } = {}) {
         if (!this.loadedGroup) {
             alert('Load a BMD model first.');
             return;
         }
 
+        const bakeSkinning = options.bakeSkinning === true;
+
         // Deduplicate animation tracks (safety net for ANIMATION_DUPLICATE_TARGETS)
-        const animations = this.loadedGroup.animations.map(clip => {
-            const seen = new Set<string>();
-            const uniqueTracks = clip.tracks.filter(track => {
-                if (seen.has(track.name)) return false;
-                seen.add(track.name);
-                return true;
+        const animations = bakeSkinning
+            ? []
+            : this.loadedGroup.animations.map(clip => {
+                const seen = new Set<string>();
+                const uniqueTracks = clip.tracks.filter(track => {
+                    if (seen.has(track.name)) return false;
+                    seen.add(track.name);
+                    return true;
+                });
+                const deduped = new THREE.AnimationClip(clip.name, clip.duration, uniqueTracks);
+                deduped.userData = clip.userData;
+                return deduped;
             });
-            const deduped = new THREE.AnimationClip(clip.name, clip.duration, uniqueTracks);
-            deduped.userData = clip.userData;
-            return deduped;
-        });
 
         // Temporarily swap MeshPhongMaterial → MeshStandardMaterial for glTF compliance
         // (glTF is a PBR format; the exporter only fully supports Standard/Basic materials)
@@ -1195,15 +1203,19 @@ class App {
             }
         });
 
+        const exportRoot = bakeSkinning
+            ? bakeSkinnedModelForExport(this.loadedGroup)
+            : this.loadedGroup;
+
         const exporter = new GLTFExporter();
-        const options = {
+        const exporterOptions = {
             binary: true,
             animations,
             embedImages: true,
         };
 
         try {
-            const result = await exporter.parseAsync(this.loadedGroup, options);
+            const result = await exporter.parseAsync(exportRoot, exporterOptions);
             const glbBuffer = result as ArrayBuffer;
             const blob = new Blob([glbBuffer], { type: 'model/gltf-binary' });
 
@@ -1213,7 +1225,7 @@ class App {
                 .toISOString()
                 .replace(/[:T]/g, '')
                 .split('.')[0];
-            const fileName = `${nameBase}_${stamp}.glb`;
+            const fileName = `${nameBase}${bakeSkinning ? '_ai_baked' : ''}_${stamp}.glb`;
 
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
