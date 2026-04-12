@@ -457,8 +457,7 @@ export class TerrainScene {
     private clearWorldScene() {
         if (this.terrainMesh) {
             this.scene.remove(this.terrainMesh);
-            this.terrainMesh.geometry.dispose();
-            (this.terrainMesh.material as THREE.Material).dispose();
+            this.disposeTerrainObject(this.terrainMesh);
             this.terrainMesh = null;
         }
         if (this.objectsGroup) {
@@ -730,11 +729,13 @@ export class TerrainScene {
 
         this.wireframeEl?.addEventListener('change', () => {
             if (this.terrainMesh) {
-                const material = this.terrainMesh.material as THREE.Material & { wireframe?: boolean };
-                if ('wireframe' in material) {
-                    material.wireframe = this.wireframeEl?.checked ?? false;
-                    material.needsUpdate = true;
-                }
+                this.forEachTerrainMaterial(this.terrainMesh, material => {
+                    const terrainMaterial = material as THREE.Material & { wireframe?: boolean };
+                    if ('wireframe' in terrainMaterial) {
+                        terrainMaterial.wireframe = this.wireframeEl?.checked ?? false;
+                        terrainMaterial.needsUpdate = true;
+                    }
+                });
             }
             this.emitStateChanged();
         });
@@ -1005,13 +1006,12 @@ export class TerrainScene {
 
         try {
             const result = await this.terrainLoader.load(files, {
-                materialMode: this.rendererActiveBackend === 'webgpu' ? 'baked' : 'shader',
+                materialMode: this.rendererActiveBackend === 'webgpu' ? 'atlas-geometry' : 'shader',
             });
 
             if (this.terrainMesh) {
                 this.scene.remove(this.terrainMesh);
-                this.terrainMesh.geometry.dispose();
-                (this.terrainMesh.material as THREE.Material).dispose();
+                this.disposeTerrainObject(this.terrainMesh);
             }
             if (this.objectsGroup) {
                 this.scene.remove(this.objectsGroup);
@@ -1109,7 +1109,8 @@ export class TerrainScene {
             return;
         }
 
-        const geometry = this.terrainMesh.geometry as THREE.BufferGeometry;
+        const geometry = (this.terrainMesh.userData.minimapGeometry as THREE.BufferGeometry | undefined)
+            ?? (this.terrainMesh.geometry as THREE.BufferGeometry);
         const positions = geometry.getAttribute('position');
         if (!positions) {
             this.minimapSourceCanvas = null;
@@ -1968,12 +1969,60 @@ export class TerrainScene {
 
     private getTerrainTileCount(mesh: THREE.Mesh): number {
         const geometry = mesh.geometry as THREE.BufferGeometry;
+        const tileCount = mesh.userData.tileCount;
+        if (typeof tileCount === 'number') {
+            return tileCount;
+        }
         const indexCount = geometry.getIndex()?.count ?? 0;
         if (indexCount > 0) {
             return Math.floor(indexCount / 6);
         }
         const positionCount = geometry.getAttribute('position')?.count ?? 0;
         return Math.floor(positionCount / 4);
+    }
+
+    private forEachTerrainMaterial(root: THREE.Object3D, callback: (material: THREE.Material) => void) {
+        root.traverse(object => {
+            const material = (object as THREE.Mesh).material;
+            if (Array.isArray(material)) {
+                material.forEach(callback);
+            } else if (material instanceof THREE.Material) {
+                callback(material);
+            }
+        });
+    }
+
+    private disposeTerrainObject(root: THREE.Object3D) {
+        const disposedMaterials = new Set<THREE.Material>();
+        const disposedTextures = new Set<THREE.Texture>();
+        const minimapGeometry = root.userData.minimapGeometry;
+        if (minimapGeometry instanceof THREE.BufferGeometry) {
+            minimapGeometry.dispose();
+        }
+        root.traverse(object => {
+            const geometry = (object as THREE.Mesh).geometry;
+            if (geometry instanceof THREE.BufferGeometry) {
+                geometry.dispose();
+            }
+
+            const material = (object as THREE.Mesh).material;
+            const materials = Array.isArray(material)
+                ? material
+                : material instanceof THREE.Material
+                    ? [material]
+                    : [];
+            for (const item of materials) {
+                const map = (item as THREE.Material & { map?: THREE.Texture | null }).map;
+                if (map instanceof THREE.Texture && !disposedTextures.has(map)) {
+                    map.dispose();
+                    disposedTextures.add(map);
+                }
+                if (!disposedMaterials.has(item)) {
+                    item.dispose();
+                    disposedMaterials.add(item);
+                }
+            }
+        });
     }
 
     private updateStats(tileCount: number, objectCount: number) {
@@ -2106,23 +2155,28 @@ export class TerrainScene {
 
     private applyTerrainTextureQuality() {
         if (!this.terrainMesh) return;
-        const material = this.terrainMesh.material as THREE.Material & { map?: THREE.Texture | null };
-        const map = material.map;
-        if (!(map instanceof THREE.Texture)) {
-            return;
-        }
 
-        map.anisotropy = Math.max(1, Math.min(16, this.getRendererMaxAnisotropy()));
-        map.needsUpdate = true;
+        const anisotropy = Math.max(1, Math.min(16, this.getRendererMaxAnisotropy()));
+        this.forEachTerrainMaterial(this.terrainMesh, material => {
+            const map = (material as THREE.Material & { map?: THREE.Texture | null }).map;
+            if (!(map instanceof THREE.Texture)) {
+                return;
+            }
+
+            map.anisotropy = anisotropy;
+            map.needsUpdate = true;
+        });
     }
 
     private updateTerrainMaterialState() {
         if (this.terrainMesh && this.wireframeEl) {
-            const material = this.terrainMesh.material as THREE.Material & { wireframe?: boolean };
-            if ('wireframe' in material) {
-                material.wireframe = this.wireframeEl.checked;
-                material.needsUpdate = true;
-            }
+            this.forEachTerrainMaterial(this.terrainMesh, material => {
+                const terrainMaterial = material as THREE.Material & { wireframe?: boolean };
+                if ('wireframe' in terrainMaterial) {
+                    terrainMaterial.wireframe = this.wireframeEl!.checked;
+                    terrainMaterial.needsUpdate = true;
+                }
+            });
         }
         if (this.objectsGroup && this.showObjectsEl) {
             this.objectsGroup.visible = this.showObjectsEl.checked;
