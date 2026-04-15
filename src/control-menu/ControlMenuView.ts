@@ -6,6 +6,8 @@ const VIEW_BADGE: Record<ViewerTab, string> = {
   terrain: 'World',
   att: 'ATT Inspector',
   ozj: 'OZJ Browser',
+  items: 'Item Browser',
+  skills: 'Skill Browser',
 };
 
 export function notifyViewportResize(): void {
@@ -37,6 +39,8 @@ export function setActiveControlMenuView(target: ViewerTab): void {
     terrain: document.getElementById('sidebar-terrain'),
     att: document.getElementById('sidebar-att'),
     ozj: document.getElementById('sidebar-ozj'),
+    items: document.getElementById('sidebar-items'),
+    skills: document.getElementById('sidebar-skills'),
   };
   const mainViews: Record<ViewerTab, HTMLElement | null> = {
     bmd: document.getElementById('view-bmd'),
@@ -44,6 +48,8 @@ export function setActiveControlMenuView(target: ViewerTab): void {
     terrain: document.getElementById('view-terrain'),
     att: document.getElementById('view-att'),
     ozj: document.getElementById('view-ozj'),
+    items: document.getElementById('view-items'),
+    skills: document.getElementById('view-skills'),
   };
   const statusElements: Record<ViewerTab, HTMLElement | null> = {
     bmd: document.getElementById('status'),
@@ -51,6 +57,8 @@ export function setActiveControlMenuView(target: ViewerTab): void {
     terrain: document.getElementById('terrain-status-bar'),
     att: document.getElementById('att-status-bar'),
     ozj: document.getElementById('ozj-status-bar'),
+    items: document.getElementById('items-status-bar'),
+    skills: document.getElementById('skills-status-bar'),
   };
 
   tabButtons.forEach(button => {

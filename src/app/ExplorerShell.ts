@@ -10,6 +10,8 @@ import { ExplorerStateStore } from '../explorer-store';
 import type { TerrainScene } from '../terrain-scene';
 import { AttInspector } from '../att-inspector/AttInspector';
 import { OzjBrowser } from '../ozj-browser/OzjBrowser';
+import { ItemBmdBrowser } from '../item-bmd-browser/ItemBmdBrowser';
+import { SkillBmdBrowser } from '../skill-bmd-browser/SkillBmdBrowser';
 
 interface BmdViewerController {
     onStateChanged?: (state: BmdSessionState) => void;
@@ -65,6 +67,12 @@ export function initExplorerShell({
 
     const ozjBrowser = new OzjBrowser();
     ozjBrowser.init();
+
+    const itemBrowser = new ItemBmdBrowser();
+    itemBrowser.init();
+
+    const skillBrowser = new SkillBmdBrowser();
+    skillBrowser.init();
 
     // Seed the inspector with any data already loaded (e.g. after a hot-reload)
     const existingAtt = terrainScene.getLoadedAttData();

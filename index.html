@@ -27,6 +27,8 @@
         <button class="tab-btn" data-view="terrain">World</button>
         <button class="tab-btn" data-view="att">ATT</button>
         <button class="tab-btn" data-view="ozj">OZJ</button>
+        <button class="tab-btn" data-view="items">Items</button>
+        <button class="tab-btn" data-view="skills">Skills</button>
       </div>
       <div class="top-bar-actions">
         <div class="sidebar-view-badge" id="sidebar-view-badge">Model workspace</div>
@@ -725,6 +727,74 @@
 
         </div>
 
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Items BMD browser sidebar                              -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div id="sidebar-items" class="sidebar-view hidden">
+
+          <div class="control-section" id="items-load-section"
+            data-menu-description="Load an items.bmd file to browse and inspect all item definitions."
+            data-menu-badge="Load">
+            <h3>Load items.bmd</h3>
+            <div class="drop-zone" id="items-drop-zone" title="Load items.bmd">
+              <p>Drop <strong>items.bmd</strong> here</p>
+              <input type="file" id="items-file-input" accept=".bmd" class="file-input-hidden" />
+            </div>
+            <p id="items-load-status" class="control-note">No file loaded.</p>
+            <p id="items-stats" class="control-note"></p>
+            <button id="items-clear-btn" class="modern-btn btn-danger full-width space-top-xs">Clear</button>
+          </div>
+
+          <div class="control-section" id="items-filter-section"
+            data-menu-description="Filter by name or item category."
+            data-menu-badge="Filter">
+            <h3>Filter</h3>
+            <input type="search" id="items-search" class="animation-dropdown full-width mb-sm" placeholder="Search by name or index…">
+            <div class="bmd-kind-filter">
+              <button class="modern-btn items-kind-btn active" data-kind="-1">All</button>
+              <button class="modern-btn items-kind-btn" data-kind="0">Weapon</button>
+              <button class="modern-btn items-kind-btn" data-kind="1">Armor</button>
+              <button class="modern-btn items-kind-btn" data-kind="2">Potion</button>
+              <button class="modern-btn items-kind-btn" data-kind="4">Jewel</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- Skills BMD browser sidebar                             -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div id="sidebar-skills" class="sidebar-view hidden">
+
+          <div class="control-section" id="skills-load-section"
+            data-menu-description="Load a skill.bmd file to browse and inspect all skill definitions."
+            data-menu-badge="Load">
+            <h3>Load skill.bmd</h3>
+            <div class="drop-zone" id="skills-drop-zone" title="Load skill.bmd">
+              <p>Drop <strong>skill.bmd</strong> here</p>
+              <input type="file" id="skills-file-input" accept=".bmd" class="file-input-hidden" />
+            </div>
+            <p id="skills-load-status" class="control-note">No file loaded.</p>
+            <p id="skills-stats" class="control-note"></p>
+            <button id="skills-clear-btn" class="modern-btn btn-danger full-width space-top-xs">Clear</button>
+          </div>
+
+          <div class="control-section" id="skills-filter-section"
+            data-menu-description="Filter skills by name or type."
+            data-menu-badge="Filter">
+            <h3>Filter</h3>
+            <input type="search" id="skills-search" class="animation-dropdown full-width mb-sm" placeholder="Search by name or ID…">
+            <div class="bmd-kind-filter">
+              <button class="modern-btn skills-type-btn active" data-type="-1">All</button>
+              <button class="modern-btn skills-type-btn" data-type="0">Attack</button>
+              <button class="modern-btn skills-type-btn" data-type="1">Buff</button>
+              <button class="modern-btn skills-type-btn" data-type="2">De-Buff</button>
+              <button class="modern-btn skills-type-btn" data-type="3">Friendly</button>
+            </div>
+          </div>
+
+        </div>
+
       </div>
       <div class="sidebar-resize-handle" id="sidebar-resize-handle"></div>
     </aside>
@@ -856,6 +926,76 @@
 
     </main>
 
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- Items BMD main view                                        -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <main class="main-content view hidden" id="view-items">
+
+      <!-- Empty state -->
+      <div id="items-no-data" class="bmd-browser-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <p>No item data loaded.</p>
+        <p class="bmd-browser-empty-hint">Drop an <strong>items.bmd</strong> file in the sidebar.</p>
+      </div>
+
+      <!-- Table + detail split -->
+      <div id="items-table-wrap" class="bmd-browser-wrap hidden">
+        <div class="bmd-table-scroll">
+          <table class="bmd-table">
+            <thead>
+              <tr>
+                <th class="bmd-th bmd-tc--id">#</th>
+                <th class="bmd-th bmd-tc--name">Name</th>
+                <th class="bmd-th bmd-tc--kind">Kind</th>
+                <th class="bmd-th bmd-tc--size">Size</th>
+                <th class="bmd-th bmd-tc--dmg">Damage</th>
+                <th class="bmd-th bmd-tc--def">Defense</th>
+                <th class="bmd-th bmd-tc--lvl">Req Lvl</th>
+              </tr>
+            </thead>
+            <tbody id="items-table-body"></tbody>
+          </table>
+        </div>
+        <div id="items-detail" class="bmd-detail hidden"></div>
+      </div>
+
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- Skills BMD main view                                       -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <main class="main-content view hidden" id="view-skills">
+
+      <!-- Empty state -->
+      <div id="skills-no-data" class="bmd-browser-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <p>No skill data loaded.</p>
+        <p class="bmd-browser-empty-hint">Drop a <strong>skill.bmd</strong> file in the sidebar.</p>
+      </div>
+
+      <!-- Table + detail split -->
+      <div id="skills-table-wrap" class="bmd-browser-wrap hidden">
+        <div class="bmd-table-scroll">
+          <table class="bmd-table">
+            <thead>
+              <tr>
+                <th class="bmd-th bmd-tc--id">#</th>
+                <th class="bmd-th bmd-tc--name">Name</th>
+                <th class="bmd-th bmd-tc--dmg">Damage</th>
+                <th class="bmd-th bmd-tc--mana">Mana</th>
+                <th class="bmd-th bmd-tc--ag">AG</th>
+                <th class="bmd-th bmd-tc--lvl">Req Lvl</th>
+                <th class="bmd-th bmd-tc--type">Type</th>
+              </tr>
+            </thead>
+            <tbody id="skills-table-body"></tbody>
+          </table>
+        </div>
+        <div id="skills-detail" class="bmd-detail hidden"></div>
+      </div>
+
+    </main>
+
     </div><!-- /.app-body -->
 
     <div class="log-bar" id="log-bar">
@@ -868,6 +1008,8 @@
           <div id="terrain-status-bar" class="hidden">Ready</div>
           <div id="att-status-bar" class="hidden">ATT Inspector</div>
           <div id="ozj-status-bar" class="hidden">OZJ Browser</div>
+          <div id="items-status-bar" class="hidden">Item Browser</div>
+          <div id="skills-status-bar" class="hidden">Skill Browser</div>
         </div>
         <div class="log-bar-controls">
           <button class="log-bar-btn" id="log-clear-btn" title="Wyczyść log">Clear</button>

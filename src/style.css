@@ -1795,3 +1795,228 @@ body.presentation-mode #att-status-bar {
   color: var(--bg-dark, #0b1322);
   border-color: var(--accent-primary);
 }
+
+/* ============================================================
+   BMD Table Browser — shared (items + skills)
+   ============================================================ */
+
+/* ── Main view layout ── */
+#view-items,
+#view-skills {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.bmd-browser-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.bmd-browser-empty-hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 0.25rem;
+}
+
+/* ── Table + detail container ── */
+.bmd-browser-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Scrollable table area ── */
+.bmd-table-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  min-height: 0;
+}
+
+/* ── Table ── */
+.bmd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
+
+.bmd-th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-subtle);
+  background: var(--bg-panel, #111827);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bmd-table-row {
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.1s;
+}
+
+.bmd-table-row:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.bmd-table-row--selected {
+  background: rgba(99,102,241,0.15) !important;
+}
+
+.bmd-table-row--selected .bmd-tc--name {
+  color: var(--accent-primary);
+}
+
+.bmd-tc {
+  padding: 0.3rem 0.6rem;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+/* Column widths */
+.bmd-tc--id   { width: 3.5rem; color: var(--text-dim); text-align: right; padding-right: 0.8rem; }
+.bmd-tc--name { width: auto; min-width: 10rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 18rem; }
+.bmd-tc--kind { width: 6rem; }
+.bmd-tc--size { width: 4rem; color: var(--text-subtle); }
+.bmd-tc--dmg  { width: 5.5rem; color: var(--text-subtle); }
+.bmd-tc--def  { width: 4.5rem; color: var(--text-subtle); }
+.bmd-tc--mana { width: 4.5rem; color: var(--text-subtle); }
+.bmd-tc--ag   { width: 4rem; color: var(--text-subtle); }
+.bmd-tc--lvl  { width: 4.5rem; color: var(--text-subtle); }
+.bmd-tc--type { width: 8rem; }
+
+/* ── Detail panel ── */
+.bmd-detail {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 0.8rem 1rem;
+  background: rgba(0,0,0,0.2);
+  flex-shrink: 0;
+  max-height: 40%;
+  overflow-y: auto;
+}
+
+.bmd-detail-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  margin-bottom: 0.6rem;
+}
+
+.bmd-detail-name {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.bmd-detail-index {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.bmd-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.3rem 1rem;
+}
+
+.bmd-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.bmd-detail-field--wide {
+  grid-column: 1 / -1;
+}
+
+.bmd-df-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.bmd-df-val {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-main);
+  word-break: break-all;
+}
+
+/* ── Skill type badges ── */
+.skill-type-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.skill-type--commonattack {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+}
+
+.skill-type--buff {
+  background: rgba(52, 211, 153, 0.15);
+  color: #6ee7b7;
+}
+
+.skill-type--debuff {
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+}
+
+.skill-type--friendly {
+  background: rgba(96, 165, 250, 0.15);
+  color: #93c5fd;
+}
+
+.skill-type--none {
+  background: rgba(156, 163, 175, 0.12);
+  color: #9ca3af;
+}
+
+/* ── Sidebar filter button row ── */
+.bmd-kind-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.items-kind-btn,
+.skills-type-btn {
+  flex: 1 1 auto;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  min-width: 3.5rem;
+}
+
+.items-kind-btn.active,
+.skills-type-btn.active {
+  background: var(--accent-primary);
+  color: var(--bg-dark, #0b1322);
+  border-color: var(--accent-primary);
+}
