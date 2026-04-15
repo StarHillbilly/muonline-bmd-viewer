@@ -4,6 +4,8 @@ const VIEW_BADGE: Record<ViewerTab, string> = {
   bmd: 'Model',
   character: 'Character',
   terrain: 'World',
+  att: 'ATT Inspector',
+  ozj: 'OZJ Browser',
 };
 
 export function notifyViewportResize(): void {
@@ -33,16 +35,22 @@ export function setActiveControlMenuView(target: ViewerTab): void {
     bmd: document.getElementById('sidebar-bmd'),
     character: document.getElementById('sidebar-character'),
     terrain: document.getElementById('sidebar-terrain'),
+    att: document.getElementById('sidebar-att'),
+    ozj: document.getElementById('sidebar-ozj'),
   };
   const mainViews: Record<ViewerTab, HTMLElement | null> = {
     bmd: document.getElementById('view-bmd'),
     character: document.getElementById('view-character'),
     terrain: document.getElementById('view-terrain'),
+    att: document.getElementById('view-att'),
+    ozj: document.getElementById('view-ozj'),
   };
   const statusElements: Record<ViewerTab, HTMLElement | null> = {
     bmd: document.getElementById('status'),
     character: document.getElementById('character-status'),
     terrain: document.getElementById('terrain-status-bar'),
+    att: document.getElementById('att-status-bar'),
+    ozj: document.getElementById('ozj-status-bar'),
   };
 
   tabButtons.forEach(button => {

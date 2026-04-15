@@ -16,6 +16,7 @@ export const DEFAULT_CONTROL_MENU_SECTIONS = {
   'character-blending-controls': false,
   'character-export-controls': false,
   'terrain-world-data-section': false,
+  'terrain-attribute-section': false,
   'terrain-navigation-section': false,
   'terrain-viewport-section': false,
   'terrain-object-section': false,

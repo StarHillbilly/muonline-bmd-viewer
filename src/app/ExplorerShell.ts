@@ -8,6 +8,8 @@ import type {
 } from '../explorer-types';
 import { ExplorerStateStore } from '../explorer-store';
 import type { TerrainScene } from '../terrain-scene';
+import { AttInspector } from '../att-inspector/AttInspector';
+import { OzjBrowser } from '../ozj-browser/OzjBrowser';
 
 interface BmdViewerController {
     onStateChanged?: (state: BmdSessionState) => void;
@@ -57,6 +59,18 @@ export function initExplorerShell({
 
     characterScene.setActive(false);
     terrainScene.setActive(false);
+
+    const attInspector = new AttInspector();
+    attInspector.init();
+
+    const ozjBrowser = new OzjBrowser();
+    ozjBrowser.init();
+
+    // Seed the inspector with any data already loaded (e.g. after a hot-reload)
+    const existingAtt = terrainScene.getLoadedAttData();
+    if (existingAtt) {
+        attInspector.setData(existingAtt, initialState.terrain.lastWorldNumber);
+    }
 
     function formatRelativeTime(timestamp: number): string {
         const deltaMs = Math.max(0, Date.now() - timestamp);
@@ -353,6 +367,9 @@ export function initExplorerShell({
             timestamp: Date.now(),
         });
         explorerStore.setTerrainState(terrainScene.getCurrentState());
+    };
+    terrainScene.onAttDataChanged = (data, worldNumber) => {
+        attInspector.setData(data, worldNumber);
     };
     terrainScene.onBookmarkCreated = bookmark => {
         explorerStore.upsertBookmark(bookmark);

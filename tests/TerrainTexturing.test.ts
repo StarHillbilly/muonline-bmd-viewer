@@ -94,7 +94,8 @@ function createTerrainAttributes(): TerrainAttributeData {
     index: 1,
     width: TERRAIN_SIZE,
     height: TERRAIN_SIZE,
-    terrainWall: new Uint8Array(TERRAIN_SIZE * TERRAIN_SIZE),
+    isExtended: false,
+    terrainWall: new Uint16Array(TERRAIN_SIZE * TERRAIN_SIZE),
   };
 }
 

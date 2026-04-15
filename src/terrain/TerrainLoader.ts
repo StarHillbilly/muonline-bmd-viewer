@@ -17,6 +17,7 @@ export interface TerrainResult {
     mesh: THREE.Mesh;
     objectsData: OBJData | null;
     mapNumber: number;
+    terrainAttributeData: TerrainAttributeData;
 }
 
 // Default terrain texture filenames — matches Client.Main TerrainData.GetDefaultTextureMappings().
@@ -102,7 +103,12 @@ export class TerrainLoader {
 
         mesh.name = 'terrain';
 
-        return { mesh, objectsData: objData, mapNumber: mapData.mapNumber };
+        return {
+            mesh,
+            objectsData: objData,
+            mapNumber: mapData.mapNumber,
+            terrainAttributeData: attData,
+        };
     }
 
     // ── Diagnostic helpers ──

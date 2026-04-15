@@ -25,6 +25,13 @@ import {
     minimapPointToWorld,
     worldToMinimapPoint,
 } from './terrain/TerrainExplorerUtils';
+import {
+    TERRAIN_ATTRIBUTE_FLAG_DEFINITIONS,
+    formatTerrainAttributeFlagHex,
+    summarizeTerrainAttributeData,
+    type TerrainAttributeFlagSummary,
+    type TerrainAttributeSummary,
+} from './terrain/TerrainAttributeSummary';
 import { TERRAIN_SCALE, TERRAIN_WORLD_SIZE } from './terrain/TerrainMesh';
 import { TERRAIN_SIZE } from './terrain/formats/ATTReader';
 import {
@@ -103,6 +110,7 @@ export class TerrainScene {
     public onBookmarkCreated?: (bookmark: ExplorerBookmark) => void;
     public onOpenModelRequest?: (selection: SelectedWorldObjectRef, modelFile: File | null) => void;
     public onStateChanged?: (state: TerrainSessionState) => void;
+    public onAttDataChanged?: (data: import('./terrain/formats/ATTReader').TerrainAttributeData | null, worldNumber: number | null) => void;
 
     private scene!: THREE.Scene;
     private camera!: THREE.PerspectiveCamera;
@@ -159,6 +167,7 @@ export class TerrainScene {
     private pendingRestoreState: TerrainSessionState | null = null;
     private availableWorldNumbers: number[] = [];
     private loadedWorldNumber: number | null = null;
+    private loadedAttData: import('./terrain/formats/ATTReader').TerrainAttributeData | null = null;
     private currentWorldFiles = new Map<string, File>();
     private cameraChangeHandle: number | null = null;
     private animationsEnabled = true;
@@ -210,6 +219,14 @@ export class TerrainScene {
     private lastContextEl: HTMLElement | null = null;
     private tileCountEl: HTMLElement | null = null;
     private objectCountEl: HTMLElement | null = null;
+    private terrainAttributeStatusEl: HTMLElement | null = null;
+    private terrainAttributeVersionEl: HTMLElement | null = null;
+    private terrainAttributeIndexEl: HTMLElement | null = null;
+    private terrainAttributeDimensionsEl: HTMLElement | null = null;
+    private terrainAttributeFormatEl: HTMLElement | null = null;
+    private terrainAttributeTilesEl: HTMLElement | null = null;
+    private terrainAttributeOccupiedEl: HTMLElement | null = null;
+    private terrainAttributeLegendEl: HTMLElement | null = null;
     private objectOverrides: TerrainObjectOverridesFile = createEmptyTerrainObjectOverrides();
     private objectOverridesPath: string | null = null;
 
@@ -235,6 +252,10 @@ export class TerrainScene {
         this.presentationMode = enabled;
         this.updateSelectionMarker();
         this.minimapNeedsRedraw = true;
+    }
+
+    public getLoadedAttData(): import('./terrain/formats/ATTReader').TerrainAttributeData | null {
+        return this.loadedAttData;
     }
 
     public setStatusMessage(message: string) {
@@ -482,6 +503,7 @@ export class TerrainScene {
         this.isolatedObjectRecord = null;
         this.minimapSourceCanvas = null;
         this.minimapNeedsRedraw = true;
+        this.updateTerrainAttributePanel(null);
         this.updateObjectInspector();
         this.updateSelectionMarker();
         this.updateStats(0, 0);
@@ -693,6 +715,15 @@ export class TerrainScene {
         this.lastContextEl = document.getElementById('terrain-last-context');
         this.tileCountEl = document.getElementById('terrain-tile-count');
         this.objectCountEl = document.getElementById('terrain-object-count');
+        this.terrainAttributeStatusEl = document.getElementById('terrain-attribute-status');
+        this.terrainAttributeVersionEl = document.getElementById('terrain-attribute-version');
+        this.terrainAttributeIndexEl = document.getElementById('terrain-attribute-index');
+        this.terrainAttributeDimensionsEl = document.getElementById('terrain-attribute-dimensions');
+        this.terrainAttributeFormatEl = document.getElementById('terrain-attribute-format');
+        this.terrainAttributeTilesEl = document.getElementById('terrain-attribute-tiles');
+        this.terrainAttributeOccupiedEl = document.getElementById('terrain-attribute-occupied');
+        this.terrainAttributeLegendEl = document.getElementById('terrain-attribute-legend');
+        this.updateTerrainAttributePanel(null);
 
         if (dropZone && folderInput) {
             dropZone.addEventListener('click', () => {
@@ -1035,6 +1066,9 @@ export class TerrainScene {
             this.applyTerrainTextureQuality();
             this.updateStats(this.getTerrainTileCount(result.mesh), result.objectsData?.objects.length ?? 0);
             this.loadedWorldNumber = result.mapNumber;
+            this.loadedAttData = result.terrainAttributeData;
+            this.updateTerrainAttributePanel(summarizeTerrainAttributeData(result.terrainAttributeData));
+            this.onAttDataChanged?.(result.terrainAttributeData, result.mapNumber);
 
             const worldCenter = (TERRAIN_SIZE * TERRAIN_SCALE) / 2;
             this.controls.target.set(worldCenter, 0, worldCenter);
@@ -2049,6 +2083,81 @@ export class TerrainScene {
     private updateStats(tileCount: number, objectCount: number) {
         if (this.tileCountEl) this.tileCountEl.textContent = Math.max(0, tileCount).toLocaleString();
         if (this.objectCountEl) this.objectCountEl.textContent = Math.max(0, objectCount).toLocaleString();
+    }
+
+    private updateTerrainAttributePanel(summary: TerrainAttributeSummary | null) {
+        if (this.terrainAttributeStatusEl) {
+            this.terrainAttributeStatusEl.textContent = summary
+                ? `ATT loaded for World ${this.loadedWorldNumber ?? '-'}`
+                : 'Load a world to inspect ATT metadata.';
+        }
+        if (this.terrainAttributeVersionEl) {
+            this.terrainAttributeVersionEl.textContent = summary ? `${summary.version}` : '-';
+        }
+        if (this.terrainAttributeIndexEl) {
+            this.terrainAttributeIndexEl.textContent = summary ? `${summary.index}` : '-';
+        }
+        if (this.terrainAttributeDimensionsEl) {
+            this.terrainAttributeDimensionsEl.textContent = summary
+                ? `${summary.width} × ${summary.height}`
+                : '-';
+        }
+        if (this.terrainAttributeFormatEl) {
+            this.terrainAttributeFormatEl.textContent = summary ? summary.formatLabel : '-';
+        }
+        if (this.terrainAttributeTilesEl) {
+            this.terrainAttributeTilesEl.textContent = summary
+                ? summary.tileCount.toLocaleString()
+                : '-';
+        }
+        if (this.terrainAttributeOccupiedEl) {
+            this.terrainAttributeOccupiedEl.textContent = summary
+                ? summary.occupiedTileCount.toLocaleString()
+                : '-';
+        }
+        this.renderTerrainAttributeLegend(summary?.flags ?? null);
+    }
+
+    private renderTerrainAttributeLegend(flags: TerrainAttributeFlagSummary[] | null) {
+        if (!this.terrainAttributeLegendEl) {
+            return;
+        }
+
+        const entries = flags ?? TERRAIN_ATTRIBUTE_FLAG_DEFINITIONS.map(definition => ({
+            ...definition,
+            count: 0,
+            active: false,
+        }));
+
+        this.terrainAttributeLegendEl.replaceChildren(
+            ...entries.map(entry => {
+                const chip = document.createElement('div');
+                chip.className = 'terrain-attribute-flag';
+                if (!entry.active) {
+                    chip.classList.add('terrain-attribute-flag--inactive');
+                }
+
+                const topRow = document.createElement('div');
+                topRow.className = 'terrain-attribute-flag-top';
+
+                const name = document.createElement('span');
+                name.className = 'terrain-attribute-flag-name';
+                name.textContent = entry.name;
+
+                const count = document.createElement('span');
+                count.className = 'terrain-attribute-flag-count';
+                count.textContent = `${entry.count.toLocaleString()} tiles`;
+
+                topRow.append(name, count);
+
+                const code = document.createElement('span');
+                code.className = 'terrain-attribute-flag-code';
+                code.textContent = formatTerrainAttributeFlagHex(entry.flag);
+
+                chip.append(topRow, code);
+                return chip;
+            }),
+        );
     }
 
     private async prewarmTerrainObjectResources(root: THREE.Object3D) {
