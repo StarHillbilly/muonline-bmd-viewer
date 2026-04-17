@@ -7,9 +7,11 @@ import { createId } from './explorer-store';
 import { TerrainLoader } from './terrain/TerrainLoader';
 import {
     loadTerrainObjects,
+    mapObjectAngleToVisualQuaternion,
     type TerrainAnimatedObjectInstance,
     type TerrainObjectLoadResult,
     type TerrainObjectSelectionRecord,
+    visualQuaternionToMapObjectAngle,
 } from './terrain/TerrainObjects';
 import {
     TerrainObjectCullingIndex,
@@ -23,6 +25,7 @@ import { collectTerrainObjectWarmupTextures } from './terrain/TerrainObjectWarmu
 import { updateTerrainObjectSelectionBox } from './terrain/TerrainObjectSelectionBounds';
 import {
     buildHeightMinimapRaster,
+    createWorldObjectId,
     minimapPointToWorld,
     worldToMinimapPoint,
 } from './terrain/TerrainExplorerUtils';
@@ -35,6 +38,8 @@ import {
 } from './terrain/TerrainAttributeSummary';
 import { TERRAIN_SCALE, TERRAIN_WORLD_SIZE } from './terrain/TerrainMesh';
 import { TERRAIN_SIZE } from './terrain/formats/ATTReader';
+import { writeOBJ } from './terrain/formats/OBJWriter';
+import type { OBJData, MapObject } from './terrain/formats/OBJReader';
 import {
     createFileFromElectronData,
     isElectron,
@@ -42,6 +47,7 @@ import {
     readTerrainObjectOverrides,
     readTerrainWorldFiles,
     scanWorldFolders,
+    writeFileInDirectory,
     writeTerrainObjectOverrides,
 } from './electron-helper';
 import {
@@ -175,6 +181,8 @@ export class TerrainScene {
     private availableWorldNumbers: number[] = [];
     private loadedWorldNumber: number | null = null;
     private loadedAttData: import('./terrain/formats/ATTReader').TerrainAttributeData | null = null;
+    private loadedObjectsData: OBJData | null = null;
+    private loadedObjFileName: string | null = null;
     private currentWorldFiles = new Map<string, File>();
     private cameraChangeHandle: number | null = null;
     private animationsEnabled = true;
@@ -221,6 +229,7 @@ export class TerrainScene {
     private objectEditorApplyTransformBtn: HTMLButtonElement | null = null;
     private objectEditorMaterialsEl: HTMLElement | null = null;
     private objectEditorSaveBtn: HTMLButtonElement | null = null;
+    private objectEditorExportBtn: HTMLButtonElement | null = null;
     private objectEditorResetBtn: HTMLButtonElement | null = null;
     private objectEditorStatusEl: HTMLElement | null = null;
     private objectTransformGizmoControlsEl: HTMLElement | null = null;
@@ -574,6 +583,8 @@ export class TerrainScene {
         }
         this.objectRecords = [];
         this.animatedObjectInstances = [];
+        this.loadedObjectsData = null;
+        this.loadedObjFileName = null;
         this.selectedObjectRecord = null;
         this.isolatedObjectRecord = null;
         this.updateTransformControlAttachment();
@@ -793,6 +804,7 @@ export class TerrainScene {
         this.objectEditorApplyTransformBtn = document.getElementById('terrain-editor-apply-transform-btn') as HTMLButtonElement | null;
         this.objectEditorMaterialsEl = document.getElementById('terrain-editor-materials');
         this.objectEditorSaveBtn = document.getElementById('terrain-editor-save-btn') as HTMLButtonElement | null;
+        this.objectEditorExportBtn = document.getElementById('terrain-export-world-obj-btn') as HTMLButtonElement | null;
         this.objectEditorResetBtn = document.getElementById('terrain-editor-reset-btn') as HTMLButtonElement | null;
         this.objectEditorStatusEl = document.getElementById('terrain-editor-status');
         this.lastContextEl = document.getElementById('terrain-last-context');
@@ -989,6 +1001,7 @@ export class TerrainScene {
         this.objectEditorCloseBtn?.addEventListener('click', () => this.closeObjectEditorPanel());
         this.objectEditorApplyTransformBtn?.addEventListener('click', () => this.applyObjectEditorTransform());
         this.objectEditorSaveBtn?.addEventListener('click', () => { void this.saveSelectedObjectTypeSettings(); });
+        this.objectEditorExportBtn?.addEventListener('click', () => { void this.exportCurrentWorldObj(); });
         this.objectEditorResetBtn?.addEventListener('click', () => { void this.resetSelectedObjectTypeSettings(); });
 
         window.addEventListener('keydown', (e) => this.handleMovementKey(e, true));
@@ -1112,6 +1125,8 @@ export class TerrainScene {
         this.objectRecords = [];
         this.animatedObjectInstances = [];
         this.currentWorldFiles.clear();
+        this.loadedObjectsData = null;
+        this.loadedObjFileName = null;
         this.clearSelection();
         this.resetObjectIsolation();
 
@@ -1169,6 +1184,8 @@ export class TerrainScene {
             this.updateStats(this.getTerrainTileCount(result.mesh), result.objectsData?.objects.length ?? 0);
             this.loadedWorldNumber = result.mapNumber;
             this.loadedAttData = result.terrainAttributeData;
+            this.loadedObjectsData = result.objectsData;
+            this.loadedObjFileName = this.findCurrentWorldObjFileName(result.mapNumber);
             this.updateTerrainAttributePanel(summarizeTerrainAttributeData(result.terrainAttributeData));
             this.onAttDataChanged?.(result.terrainAttributeData, result.mapNumber);
 
@@ -1256,6 +1273,15 @@ export class TerrainScene {
         }
 
         return files;
+    }
+
+    private findCurrentWorldObjFileName(worldNumber: number): string {
+        for (const [key, file] of this.currentWorldFiles) {
+            if (key.startsWith(`world${worldNumber}/`) && /\.obj$/i.test(key)) {
+                return file.name || `EncTerrain${worldNumber}.obj`;
+            }
+        }
+        return `EncTerrain${worldNumber}.obj`;
     }
 
     private buildMinimapSource() {
@@ -1420,31 +1446,18 @@ export class TerrainScene {
             return quaternion;
         }
 
-        return this.rotationVectorToQuaternion(record.selection.rotation);
+        return this.selectionRotationToVisualQuaternion(record);
     }
 
-    private rotationVectorToQuaternion(rotation: ExplorerVector3): THREE.Quaternion {
-        const euler = new THREE.Euler(
-            THREE.MathUtils.degToRad(rotation.x),
-            THREE.MathUtils.degToRad(rotation.y),
-            THREE.MathUtils.degToRad(rotation.z),
-            'XYZ',
-        );
-        return new THREE.Quaternion().setFromEuler(euler);
+    private selectionRotationToVisualQuaternion(record: TerrainObjectSelectionRecord): THREE.Quaternion {
+        return mapObjectAngleToVisualQuaternion(record.selection.rotation, record.baseOrientation);
     }
 
-    private quaternionToRotationVector(quaternion: THREE.Quaternion): ExplorerVector3 {
-        const euler = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
-        return {
-            x: this.normalizeDegrees(THREE.MathUtils.radToDeg(euler.x)),
-            y: this.normalizeDegrees(THREE.MathUtils.radToDeg(euler.y)),
-            z: this.normalizeDegrees(THREE.MathUtils.radToDeg(euler.z)),
-        };
-    }
-
-    private normalizeDegrees(value: number): number {
-        const normalized = ((value % 360) + 360) % 360;
-        return Math.abs(normalized - 360) < 0.0001 ? 0 : normalized;
+    private visualQuaternionToSelectionRotation(
+        quaternion: THREE.Quaternion,
+        record: TerrainObjectSelectionRecord,
+    ): ExplorerVector3 {
+        return visualQuaternionToMapObjectAngle(quaternion, record.baseOrientation);
     }
 
     private handleTransformControlObjectChange() {
@@ -1458,7 +1471,7 @@ export class TerrainScene {
         const nextPosition = this.toExplorerVector3(this.transformProxy.position);
         const nextScale = Math.max(0.01, this.transformProxy.scale.x || record.selection.scale);
         const nextQuaternion = this.transformProxy.quaternion.clone();
-        const nextRotation = this.quaternionToRotationVector(nextQuaternion);
+        const nextRotation = this.visualQuaternionToSelectionRotation(nextQuaternion, record);
 
         this.applyTransformToObjectRecords(matchingRecords, nextPosition, nextScale, nextRotation, nextQuaternion);
         this.updateObjectInspector();
@@ -1676,7 +1689,9 @@ export class TerrainScene {
         const oldPosition = { ...matchingRecords[0].selection.position };
         const oldScale = Math.max(0.01, matchingRecords[0].selection.scale);
         const scaleRatio = nextScale / oldScale;
-        const resolvedNextQuaternion = nextQuaternion ?? (nextRotation ? this.rotationVectorToQuaternion(nextRotation) : undefined);
+        const resolvedNextQuaternion = nextQuaternion ?? (nextRotation
+            ? mapObjectAngleToVisualQuaternion(nextRotation, matchingRecords[0].baseOrientation)
+            : undefined);
         const positionDelta = new THREE.Vector3(
             nextPosition.x - oldPosition.x,
             nextPosition.y - oldPosition.y,
@@ -1771,6 +1786,79 @@ export class TerrainScene {
         scale.multiplyScalar(scaleRatio);
         matrix.compose(position, rotation, scale);
         record.instancedMesh.setMatrixAt(record.instanceId, matrix);
+    }
+
+    private async exportCurrentWorldObj() {
+        if (!this.loadedObjectsData || this.loadedWorldNumber === null) {
+            this.setObjectEditorStatus('Load a world with OBJ data before export.');
+            return;
+        }
+
+        const exportRoot = await openDirectoryDialog();
+        if (!exportRoot) {
+            this.setObjectEditorStatus('Export cancelled.');
+            return;
+        }
+
+        if (this.objectEditorExportBtn) this.objectEditorExportBtn.disabled = true;
+        try {
+            const exportData = this.buildCurrentWorldObjData();
+            const bytes = writeOBJ(exportData);
+            const fileName = this.loadedObjFileName || `EncTerrain${this.loadedWorldNumber}.obj`;
+            const relativePath = `World${this.loadedWorldNumber}/${fileName}`;
+            const result = await writeFileInDirectory(exportRoot, relativePath, bytes);
+            if (result.error || !result.path) {
+                this.setObjectEditorStatus(`Export failed: ${result.error || 'unknown error'}`);
+                return;
+            }
+
+            this.setObjectEditorStatus(`Exported OBJ: ${result.path}`);
+        } catch (error) {
+            console.error('World OBJ export failed:', error);
+            this.setObjectEditorStatus(`Export failed: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            if (this.objectEditorExportBtn) this.objectEditorExportBtn.disabled = false;
+        }
+    }
+
+    private buildCurrentWorldObjData(): OBJData {
+        if (!this.loadedObjectsData) {
+            throw new Error('No OBJ data loaded.');
+        }
+
+        const recordsByObjectId = new Map<string, TerrainObjectSelectionRecord>();
+        for (const record of this.objectRecords) {
+            recordsByObjectId.set(record.selection.objectId, record);
+        }
+
+        const objects = this.loadedObjectsData.objects.map(object => {
+            const objectId = createWorldObjectId(this.loadedObjectsData!.mapNumber, object.type, {
+                x: object.position.x,
+                z: TERRAIN_WORLD_SIZE - object.position.y,
+            });
+            const record = recordsByObjectId.get(objectId);
+            return record ? this.mapRecordToObjObject(record, object) : object;
+        });
+
+        return {
+            version: this.loadedObjectsData.version,
+            mapNumber: this.loadedObjectsData.mapNumber,
+            objects,
+        };
+    }
+
+    private mapRecordToObjObject(record: TerrainObjectSelectionRecord, original: MapObject): MapObject {
+        return {
+            ...original,
+            type: record.selection.type,
+            position: {
+                x: record.selection.position.x,
+                y: TERRAIN_WORLD_SIZE - record.selection.position.z,
+                z: record.selection.position.y,
+            },
+            angle: { ...record.selection.rotation },
+            scale: record.selection.scale,
+        };
     }
 
     private async saveSelectedObjectTypeSettings() {

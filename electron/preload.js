@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Write persisted terrain object overrides to app user data
   writeTerrainObjectOverrides: (data) => ipcRenderer.invoke('fs:writeTerrainObjectOverrides', data),
 
+  // Write a file below a user-selected export directory
+  writeFileInDirectory: (rootPath, relativePath, data) => ipcRenderer.invoke('fs:writeFileInDirectory', rootPath, relativePath, data),
+
   // Get real file path from File object (for drag & drop)
   getFilePath: (file) => {
     try {

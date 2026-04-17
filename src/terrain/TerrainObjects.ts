@@ -39,6 +39,7 @@ export interface TerrainObjectSelectionRecord {
     selection: SelectedWorldObjectRef;
     modelFile: File | null;
     approximateRadius: number;
+    baseOrientation: THREE.Quaternion;
     object3D: THREE.Object3D | null;
     instancedMesh: THREE.InstancedMesh | null;
     instanceId: number | null;
@@ -313,6 +314,7 @@ export async function loadTerrainObjects(
                         inst,
                         worldPosition,
                         approximateRadius,
+                        baseOrientation,
                         clone,
                         null,
                         null,
@@ -464,6 +466,7 @@ function createSelectionRecord(
     instance: MapObject,
     worldPosition: THREE.Vector3,
     approximateRadius: number,
+    baseOrientation: THREE.Quaternion,
     object3D: THREE.Object3D | null,
     instancedMesh: THREE.InstancedMesh | null,
     instanceId: number | null,
@@ -497,6 +500,7 @@ function createSelectionRecord(
         },
         modelFile: definition.modelFile,
         approximateRadius: approximateRadius * Math.max(instance.scale, 0.001),
+        baseOrientation: baseOrientation.clone(),
         object3D,
         instancedMesh,
         instanceId,
@@ -507,7 +511,7 @@ function mapObjectToWorldPosition(inst: MapObject): THREE.Vector3 {
     return new THREE.Vector3(inst.position.x, inst.position.z, TERRAIN_WORLD_SIZE - inst.position.y);
 }
 
-function mapObjectAngleToQuaternion(angle: { x: number; y: number; z: number }): THREE.Quaternion {
+export function mapObjectAngleToQuaternion(angle: { x: number; y: number; z: number }): THREE.Quaternion {
     const qMu = angleQuaternion(
         THREE.MathUtils.degToRad(angle.x),
         THREE.MathUtils.degToRad(angle.y),
@@ -527,6 +531,32 @@ function mapObjectAngleToQuaternion(angle: { x: number; y: number; z: number }):
         .multiply(basisInv);
 
     return new THREE.Quaternion().setFromRotationMatrix(threeMatrix).normalize();
+}
+
+export function mapObjectAngleToVisualQuaternion(
+    angle: { x: number; y: number; z: number },
+    baseOrientation: THREE.Quaternion,
+): THREE.Quaternion {
+    return mapObjectAngleToQuaternion(angle).multiply(baseOrientation);
+}
+
+export function visualQuaternionToMapObjectAngle(
+    visualQuaternion: THREE.Quaternion,
+    baseOrientation: THREE.Quaternion,
+): { x: number; y: number; z: number } {
+    const objectQuaternion = visualQuaternion.clone().multiply(baseOrientation.clone().invert()).normalize();
+    const threeMatrix = new THREE.Matrix4().makeRotationFromQuaternion(objectQuaternion);
+    const muMatrix = new THREE.Matrix4()
+        .copy(MU_TO_THREE_BASIS_INV)
+        .multiply(threeMatrix)
+        .multiply(MU_TO_THREE_BASIS);
+    const euler = new THREE.Euler().setFromRotationMatrix(muMatrix, 'XYZ');
+
+    return {
+        x: normalizeAngleDegrees(THREE.MathUtils.radToDeg(euler.x)),
+        y: normalizeAngleDegrees(THREE.MathUtils.radToDeg(euler.y)),
+        z: normalizeAngleDegrees(THREE.MathUtils.radToDeg(euler.z)),
+    };
 }
 
 function angleQuaternion(x: number, y: number, z: number): THREE.Quaternion {
@@ -773,6 +803,7 @@ function createObjectInstanceChunks(
             inst,
             position,
             approximateRadius,
+            baseOrientation,
             null,
             null,
             null,
@@ -786,6 +817,11 @@ function createObjectInstanceChunks(
         }
     }
     return chunkedItems;
+}
+
+function normalizeAngleDegrees(value: number): number {
+    const normalized = ((value % 360) + 360) % 360;
+    return Math.abs(normalized - 360) < 0.0001 ? 0 : normalized;
 }
 
 function getAverageInstanceWorldPosition(instances: MapObject[]): THREE.Vector3 {

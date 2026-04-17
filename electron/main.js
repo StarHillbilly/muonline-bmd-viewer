@@ -366,6 +366,53 @@ ipcMain.handle('fs:writeTerrainObjectOverrides', async (event, data) => {
   }
 });
 
+ipcMain.handle('fs:writeFileInDirectory', async (event, rootPath, relativePath, data) => {
+  if (typeof rootPath !== 'string' || !rootPath || typeof relativePath !== 'string' || !relativePath) {
+    return {
+      path: null,
+      error: 'Invalid export path.',
+    };
+  }
+
+  try {
+    const root = path.resolve(rootPath);
+    const target = path.resolve(root, relativePath);
+    const isInsideRoot = target === root || target.startsWith(root + path.sep);
+    if (!isInsideRoot) {
+      return {
+        path: null,
+        error: 'Export path escapes the selected folder.',
+      };
+    }
+
+    let bytes;
+    if (Buffer.isBuffer(data)) {
+      bytes = data;
+    } else if (data instanceof ArrayBuffer) {
+      bytes = Buffer.from(data);
+    } else if (ArrayBuffer.isView(data)) {
+      bytes = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+    } else {
+      return {
+        path: null,
+        error: 'Invalid export data.',
+      };
+    }
+
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, bytes);
+    return {
+      path: target,
+    };
+  } catch (error) {
+    console.error('[fs:writeFileInDirectory] Error writing file:', error);
+    return {
+      path: null,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+});
+
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {

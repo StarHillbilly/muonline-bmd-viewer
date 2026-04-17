@@ -18,6 +18,11 @@ export interface TerrainObjectOverridesWriteResult {
   error?: string;
 }
 
+export interface FileWriteResult {
+  path: string | null;
+  error?: string;
+}
+
 // Type definitions for Electron API
 interface ElectronAPI {
   isElectron: boolean;
@@ -31,6 +36,7 @@ interface ElectronAPI {
   searchTextures: (startPath: string, requiredTextures: string[]) => Promise<Record<string, string[]>>;
   readTerrainObjectOverrides: () => Promise<TerrainObjectOverridesFileData>;
   writeTerrainObjectOverrides: (data: unknown) => Promise<TerrainObjectOverridesWriteResult>;
+  writeFileInDirectory: (rootPath: string, relativePath: string, data: ArrayBuffer) => Promise<FileWriteResult>;
   getFilePath: (file: File) => string | null;
 }
 
@@ -174,6 +180,24 @@ export async function writeTerrainObjectOverrides(data: unknown): Promise<Terrai
     return { path: 'localStorage:terrain-object-overrides' };
   }
   return window.electronAPI.writeTerrainObjectOverrides(data);
+}
+
+export async function writeFileInDirectory(
+  rootPath: string,
+  relativePath: string,
+  data: ArrayBuffer | Uint8Array,
+): Promise<FileWriteResult> {
+  if (!isElectron() || !window.electronAPI?.writeFileInDirectory) {
+    return {
+      path: null,
+      error: 'Export to folder is only available in Electron.',
+    };
+  }
+
+  const buffer = data instanceof Uint8Array
+    ? new Uint8Array(data).buffer
+    : data;
+  return window.electronAPI.writeFileInDirectory(rootPath, relativePath, buffer);
 }
 
 /**

@@ -13,6 +13,17 @@ export function decryptFileCryptor(src: Uint8Array): Uint8Array {
     return dst;
 }
 
+export function encryptFileCryptor(src: Uint8Array): Uint8Array {
+    const dst = new Uint8Array(src.length);
+    let mapKey = 0x5E;
+    for (let i = 0; i < src.length; i++) {
+        const encrypted = ((src[i] + mapKey) & 0xFF) ^ MAP_XOR_KEY[i & 15];
+        dst[i] = encrypted;
+        mapKey = (encrypted + 0x3D) & 0xFF;
+    }
+    return dst;
+}
+
 const BUX_MASK = new Uint8Array([0xFC, 0xCF, 0xAB]);
 
 export function xorBuxMask(buffer: Uint8Array): Uint8Array {

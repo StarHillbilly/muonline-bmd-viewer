@@ -6,6 +6,7 @@ export interface MapObject {
     position: { x: number; y: number; z: number };
     angle: { x: number; y: number; z: number };
     scale: number;
+    extra?: Uint8Array;
 }
 
 export interface OBJData {
@@ -23,9 +24,8 @@ export function readOBJ(buffer: ArrayBuffer): OBJData {
     const mapNumber = u8[1];
     const count = view.getInt16(2, true);
 
-    // Object size depends on version
     const baseSizes: Record<number, number> = {
-        0: 32, 1: 34, 2: 35, 3: 47, 4: 48, 5: 56,
+        0: 30, 1: 32, 2: 33, 3: 45, 4: 46, 5: 54,
     };
 
     const objSize = baseSizes[version];
@@ -37,6 +37,10 @@ export function readOBJ(buffer: ArrayBuffer): OBJData {
     let offset = 4;
 
     for (let i = 0; i < count; i++) {
+        if (offset + objSize > u8.byteLength) {
+            throw new Error(`OBJ: truncated object record ${i + 1}/${count}`);
+        }
+
         const type = view.getInt16(offset, true); offset += 2;
         const px = view.getFloat32(offset, true); offset += 4;
         const py = view.getFloat32(offset, true); offset += 4;
@@ -46,8 +50,8 @@ export function readOBJ(buffer: ArrayBuffer): OBJData {
         const az = view.getFloat32(offset, true); offset += 4;
         const scale = view.getFloat32(offset, true); offset += 4;
 
-        // Skip version-specific extra bytes
-        const extraBytes = objSize - 32;
+        const extraBytes = objSize - 30;
+        const extra = extraBytes > 0 ? u8.slice(offset, offset + extraBytes) : undefined;
         offset += extraBytes;
 
         objects.push({
@@ -55,6 +59,7 @@ export function readOBJ(buffer: ArrayBuffer): OBJData {
             position: { x: px, y: py, z: pz },
             angle: { x: ax, y: ay, z: az },
             scale,
+            ...(extra ? { extra } : {}),
         });
     }
 
