@@ -25,6 +25,7 @@ interface ElectronAPI {
   openFiles: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string[]>;
   openDirectory: () => Promise<string | null>;
   readFile: (filePath: string) => Promise<{ name: string; data: ArrayBuffer } | null>;
+  readExistingFiles: (filePaths: string[]) => Promise<Array<{ name: string; data: ArrayBuffer }>>;
   scanWorldFolders: (dataRootPath: string) => Promise<number[]>;
   readTerrainWorldFiles: (dataRootPath: string, worldNumber: number) => Promise<TerrainWorldFileData[]>;
   searchTextures: (startPath: string, requiredTextures: string[]) => Promise<Record<string, string[]>>;
@@ -100,6 +101,16 @@ export async function readFileFromPath(filePath: string): Promise<{ name: string
     return null;
   }
   return window.electronAPI.readFile(filePath);
+}
+
+/**
+ * Read existing files from paths without warning for missing files (Electron only).
+ */
+export async function readExistingFilesFromPaths(filePaths: string[]): Promise<Array<{ name: string; data: ArrayBuffer }>> {
+  if (!isElectron() || !window.electronAPI?.readExistingFiles) {
+    return [];
+  }
+  return window.electronAPI.readExistingFiles(filePaths);
 }
 
 /**

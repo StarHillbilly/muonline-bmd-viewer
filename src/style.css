@@ -126,13 +126,14 @@ body::before {
 
 .top-bar .sidebar-tabs {
   flex: 1;
+  min-width: 0;
   margin-bottom: 0;
   border: none;
   background: none;
   padding: 0.2rem;
   display: flex;
   gap: 0.3rem;
-  max-width: 420px;
+  max-width: 620px;
   border-radius: 999px;
   border: var(--border-light);
   background: rgba(7, 15, 26, 0.72);
@@ -1802,7 +1803,8 @@ body.presentation-mode #att-status-bar {
 
 /* ── Main view layout ── */
 #view-items,
-#view-skills {
+#view-skills,
+#view-gfx {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2019,4 +2021,162 @@ body.presentation-mode #att-status-bar {
   background: var(--accent-primary);
   color: var(--bg-dark, #0b1322);
   border-color: var(--accent-primary);
+}
+/* ─── GFx Browser ─────────────────────────────────────────────────────────── */
+
+.gfx-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-muted, #8899aa);
+  font-size: 0.78rem;
+  user-select: none;
+}
+
+.gfx-toggle-row input {
+  accent-color: var(--accent-primary, #4a9eff);
+}
+
+.gfx-load-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.gfx-load-actions .modern-btn {
+  min-height: 32px;
+  padding: 0.42rem 0.54rem;
+  font-size: 0.76rem;
+}
+
+.gfx-stage-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.035) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.035) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.035) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.035) 75%),
+    rgba(5, 8, 14, 0.86);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+  overflow: hidden;
+}
+
+.gfx-stage-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.gfx-stage-canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.18);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.24);
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.gfx-stage-note {
+  flex-shrink: 0;
+  padding: 0.45rem 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-muted, #8899aa);
+  font-size: 0.74rem;
+  font-family: var(--font-mono);
+  background: rgba(0,0,0,0.24);
+}
+
+.gfx-bitmap-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  max-height: 210px;
+  border-top: 1px solid var(--border-color, #2a3a5c);
+}
+
+.gfx-bitmap-gallery--standalone {
+  flex: 1;
+  align-content: flex-start;
+  max-height: none;
+  border-top: 0;
+}
+
+.gfx-bitmap-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.4rem;
+  background: var(--bg-panel, #131e35);
+  border: 1px solid var(--border-color, #2a3a5c);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  min-width: 96px;
+}
+
+.gfx-bitmap-card:hover { border-color: var(--accent-primary, #4a9eff); }
+
+.gfx-bitmap-thumb {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  background: repeating-conic-gradient(#1a2540 0% 25%, #131e35 0% 50%) 0 0 / 12px 12px;
+  border-radius: 2px;
+}
+
+.gfx-bitmap-info {
+  font-size: 0.7rem;
+  color: var(--text-muted, #8899aa);
+  text-align: center;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gfx-bitmap-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  margin-top: 0.5rem;
+  background: repeating-conic-gradient(#1a2540 0% 25%, #131e35 0% 50%) 0 0 / 12px 12px;
+  border-radius: 3px;
+}
+
+.gfx-hex-preview {
+  margin-top: 0.5rem;
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: var(--text-muted, #8899aa);
+  word-break: break-all;
+  padding: 0.4rem;
+  background: var(--bg-dark, #0b1322);
+  border-radius: 3px;
+  border: 1px solid var(--border-color, #2a3a5c);
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.bmd-tc-offset {
+  width: 80px;
+  text-align: right;
+  color: var(--text-muted, #8899aa);
 }

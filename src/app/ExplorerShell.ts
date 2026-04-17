@@ -12,6 +12,7 @@ import { AttInspector } from '../att-inspector/AttInspector';
 import { OzjBrowser } from '../ozj-browser/OzjBrowser';
 import { ItemBmdBrowser } from '../item-bmd-browser/ItemBmdBrowser';
 import { SkillBmdBrowser } from '../skill-bmd-browser/SkillBmdBrowser';
+import { GfxBrowser } from '../gfx-browser/GfxBrowser';
 
 interface BmdViewerController {
     onStateChanged?: (state: BmdSessionState) => void;
@@ -73,6 +74,9 @@ export function initExplorerShell({
 
     const skillBrowser = new SkillBmdBrowser();
     skillBrowser.init();
+
+    const gfxBrowser = new GfxBrowser();
+    gfxBrowser.init();
 
     // Seed the inspector with any data already loaded (e.g. after a hot-reload)
     const existingAtt = terrainScene.getLoadedAttData();

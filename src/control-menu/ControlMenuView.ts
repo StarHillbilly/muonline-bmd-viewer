@@ -8,6 +8,7 @@ const VIEW_BADGE: Record<ViewerTab, string> = {
   ozj: 'OZJ Browser',
   items: 'Item Browser',
   skills: 'Skill Browser',
+  gfx: 'GFx Browser',
 };
 
 export function notifyViewportResize(): void {
@@ -41,6 +42,7 @@ export function setActiveControlMenuView(target: ViewerTab): void {
     ozj: document.getElementById('sidebar-ozj'),
     items: document.getElementById('sidebar-items'),
     skills: document.getElementById('sidebar-skills'),
+    gfx: document.getElementById('sidebar-gfx'),
   };
   const mainViews: Record<ViewerTab, HTMLElement | null> = {
     bmd: document.getElementById('view-bmd'),
@@ -50,6 +52,7 @@ export function setActiveControlMenuView(target: ViewerTab): void {
     ozj: document.getElementById('view-ozj'),
     items: document.getElementById('view-items'),
     skills: document.getElementById('view-skills'),
+    gfx: document.getElementById('view-gfx'),
   };
   const statusElements: Record<ViewerTab, HTMLElement | null> = {
     bmd: document.getElementById('status'),
@@ -59,6 +62,7 @@ export function setActiveControlMenuView(target: ViewerTab): void {
     ozj: document.getElementById('ozj-status-bar'),
     items: document.getElementById('items-status-bar'),
     skills: document.getElementById('skills-status-bar'),
+    gfx: document.getElementById('gfx-status-bar'),
   };
 
   tabButtons.forEach(button => {

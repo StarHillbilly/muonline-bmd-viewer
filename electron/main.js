@@ -169,6 +169,33 @@ ipcMain.handle('fs:readFile', async (event, filePath) => {
   }
 });
 
+ipcMain.handle('fs:readExistingFiles', async (event, filePaths) => {
+  if (!Array.isArray(filePaths)) {
+    return [];
+  }
+
+  const files = [];
+  for (const filePath of filePaths) {
+    if (typeof filePath !== 'string' || !filePath) {
+      continue;
+    }
+
+    try {
+      const buffer = await fs.readFile(filePath);
+      files.push({
+        name: path.basename(filePath),
+        data: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+      });
+    } catch (error) {
+      if (!isMissingPathError(error)) {
+        console.warn(`[fs:readExistingFiles] Failed to read file: ${filePath}`, error);
+      }
+    }
+  }
+
+  return files;
+});
+
 // Scan Data folder for World{N} directories
 ipcMain.handle('fs:scanWorldFolders', async (event, dataRootPath) => {
   if (!dataRootPath) {

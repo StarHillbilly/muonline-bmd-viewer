@@ -149,3 +149,5 @@ release/
 muonline/
 .kilo/
 .docs/
+tmp-gfx-test/
+.serena/

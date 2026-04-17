@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Read file from disk
   readFile: (filePath) => ipcRenderer.invoke('fs:readFile', filePath),
 
+  // Read only files that exist, silently skipping missing paths
+  readExistingFiles: (filePaths) => ipcRenderer.invoke('fs:readExistingFiles', filePaths),
+
   // Scan Data directory for World{N} subfolders
   scanWorldFolders: (dataRootPath) => ipcRenderer.invoke('fs:scanWorldFolders', dataRootPath),
 
