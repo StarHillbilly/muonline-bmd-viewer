@@ -11,9 +11,10 @@ const THREE_WEBGPU_MODULES = new RegExp([
 
 // Use './' for Electron compatibility, or set VITE_BASE_PATH for GitHub Pages
 export default defineConfig({
+  plugins: [],
   base: process.env.VITE_BASE_PATH || './',
   build: {
-    chunkSizeWarningLimit: 650,
+    chunkSizeWarningLimit: 1000,
     rolldownOptions: {
       output: {
         codeSplitting: {
